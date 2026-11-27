@@ -1,0 +1,82 @@
+port: 7001 # 后端 HTTP 服务监听端口。
+
+cors_origins: [] # 允许跨域访问后端的前端 Origin 列表。
+
+log: # 应用日志输出配置。
+  level: INFO # 日志级别 (DEBUG, INFO, WARNING, ERROR, CRITICAL)。
+  rotation: 10MB # 日志文件滚动大小。
+
+doris: # Doris 管理连接，用于角色权限管理等平台操作。
+  host: 118.195.131.170 # 数据服务主机地址。
+  port: 9030 # 数据服务连接端口。
+  user: atguigu # 连接账号。
+  password: ${oc.env:DORIS_ADMIN_PASSWORD} # 连接密码，使用环境变量注入。
+  database: ecommerce # 默认连接数据库。
+
+auth_postgresql: # 用户与加密的 Doris 查询凭据数据库。
+  host: 118.195.131.170
+  port: 5432
+  user: atguigu
+  password: ${oc.env:POSTGRES_PASSWORD}
+  database: auth
+
+meta_postgresql: # 元数据目录、字段关联和取值水位数据库。
+  host: 118.195.131.170
+  port: 5432
+  user: atguigu
+  password: ${oc.env:POSTGRES_PASSWORD}
+  database: meta
+
+langgraph_postgresql: # Conversation 目录和 LangGraph Checkpoint 数据库。
+  host: 118.195.131.170
+  port: 5432
+  user: atguigu
+  password: ${oc.env:POSTGRES_PASSWORD}
+  database: langgraph
+
+doris_credentials: # Doris 查询身份密码的应用侧加密配置。
+  encryption_key: ${oc.env:DORIS_CREDENTIAL_ENCRYPTION_KEY} # Fernet 密钥。
+
+elasticsearch: # 语义检索使用的 Elasticsearch 连接和向量维度。
+  host: 118.195.131.170
+  port: 9200
+  user: elastic # 内置超级用户；服务端已开启 xpack.security，需 Basic 认证。
+  password: ${oc.env:ELASTIC_PASSWORD} # 密码由环境变量注入，与 compose 中的 ELASTIC_PASSWORD 一致。
+  embedding_size: 1024 # 索引向量维度，必须与嵌入模型输出一致。
+  request_timeout: 60.0 # 单次请求超时（秒）。带 1024 维向量的批量写入本身就要数秒，不能用默认 10 秒。
+
+embedding: # 文本向量化服务配置。
+  base_url: https://api.siliconflow.cn/v1 # OpenAI 兼容 API 地址。
+  api_key: ${oc.env:SILICONFLOW_API_KEY} # API 密钥，使用环境变量注入。
+  model: BAAI/bge-m3 # 嵌入模型标识。
+  timeout: 30.0 # 单次嵌入请求超时，单位为秒。
+
+metadata: # 元数据全量和增量导入共用的 Redis 租约锁。
+  redis_url: redis://:${oc.env:REDIS_PASSWORD}@118.195.131.170:6379/4 # 同一元数据目录的所有导入进程必须使用相同地址；密码由 REDIS_PASSWORD 注入。
+
+sandbox: # 分析沙箱归属租约、短锁与 Docker 宿主，可由 .env 覆盖。
+  redis_url: ${oc.env:SANDBOX_REDIS_URL,redis://:${oc.env:REDIS_PASSWORD}@127.0.0.1:6379/2} # 默认走本机 Redis；覆盖时请在 URL 中带上密码。
+  # 留空连接本机 Docker；远程 Docker 可写 ssh://root@host 或 tcp://host:2375。
+  docker_host: ${oc.env:SANDBOX_DOCKER_HOST,""}
+
+lm_config: # 可用语言模型集合及默认模型。
+  use: deepseek-v4.1-flash-1017 # Planner 和默认 Specialist 使用的模型配置名。
+  models: # 按配置名声明可用语言模型。
+    deepseek-v4.1-flash-1017: # 模型配置名，可由 use 或 Specialist 引用。
+      model_provider: openai # 使用 DeepSeek Chat Completions 客户端。
+      model: deepseek-v4.1-flash-1017 # 供应商侧模型标识。
+      base_url: https://tokenhub.tencentmaas.com/v1 # 模型供应商 API 地址。
+      api_key: ${oc.env:DEEPSEEK_API_KEY} # 模型供应商 API 密钥。
+      params: {} # 传给模型客户端的附加初始化参数。
+      profile: # 模型能力描述和上下文限制。
+        image_inputs: true # 当前模型是否支持识别图片内容。
+        max_input_tokens: 1048576 # 模型上下文长度，用于计算对话压缩阈值。
+
+agent: # Planner 和 Specialist 运行时配置。
+  specialists: # 各 Specialist 的模型选择，default 表示跟随 lm_config.use。
+    explorer: # 数据发现 Specialist。
+      model: default # Specialist 使用的语言模型配置名。
+    analyst: # 数据分析 Specialist。
+      model: default
+    reviewer: # 结果审查 Specialist。
+      model: default

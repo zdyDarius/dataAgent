@@ -1,5 +1,4 @@
 [project]
-name = "dataagent"
 dependencies = [
   "asyncmy>=0.2.11",
   "cryptography>=46.0.4",
